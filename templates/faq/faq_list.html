@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Часто задаваемые вопросы{% endblock %}
+{% block content %}
+<h1>Часто задаваемые вопросы</h1>
+<p class="muted">Нажмите на вопрос, чтобы увидеть ответ.</p>
+
+{% for item in items %}
+<details class="faq-item">
+    <summary>{{ item.question }}</summary>
+    <div class="faq-answer">{{ item.answer|linebreaksbr }}</div>
+</details>
+{% empty %}
+<p class="muted">Пока нет опубликованных вопросов.</p>
+{% endfor %}
+{% endblock %}

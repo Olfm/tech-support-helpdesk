@@ -1,0 +1,55 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Служба технической поддержки{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+<body>
+<div class="topbar"></div>
+<header class="site-header">
+    <a class="brand" href="{% url 'tickets:home' %}">
+        <span class="brand-title">Московский университет имени С.Ю.&nbsp;<b>Витте</b></span>
+        <span class="brand-sub">Служба технической поддержки</span>
+    </a>
+    <nav class="nav">
+        <a href="{% url 'faq:list' %}">FAQ</a>
+        <a href="{% url 'forum:topic_list' %}">Форум</a>
+        {% if user.is_authenticated %}
+            <a href="{% url 'tickets:dashboard' %}">Кабинет</a>
+            <a href="{% url 'tickets:ticket_list' %}">Заявки</a>
+            <a href="{% url 'tickets:notifications' %}">
+                Уведомления{% if unread_notifications_count %} <span class="badge">{{ unread_notifications_count }}</span>{% endif %}
+            </a>
+            <span class="nav-user">{{ user.get_full_name|default:user.username }}</span>
+            <form action="{% url 'accounts:logout' %}" method="post" class="inline-form">
+                {% csrf_token %}<button type="submit" class="link-button">Выйти</button>
+            </form>
+        {% else %}
+            <a href="{% url 'accounts:login' %}">Войти</a>
+            <a href="{% url 'accounts:signup' %}">Регистрация</a>
+        {% endif %}
+    </nav>
+</header>
+
+<main class="container">
+    {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+                <li class="message {{ message.tags }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+    {% block content %}{% endblock %}
+</main>
+
+<footer class="site-footer">
+    <p>Служба технической поддержки · Департамент электронного обучения и сопровождения</p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ topic.title }}{% endblock %}
+{% block content %}
+<h1>{{ topic.title }}</h1>
+<p class="muted">Автор: {{ topic.author.get_full_name|default:topic.author.username }} · {{ topic.created_at|date:"d.m.Y H:i" }}
+   {% if topic.is_closed %}<span class="pill closed">закрыта</span>{% endif %}</p>
+
+{% if can_moderate %}
+<form method="post" action="{% url 'forum:topic_toggle_close' topic.pk %}" class="inline-form">
+    {% csrf_token %}
+    <button type="submit" class="btn secondary">{% if topic.is_closed %}Открыть тему{% else %}Закрыть тему{% endif %}</button>
+</form>
+{% endif %}
+
+<div class="card">
+    {% for post in posts %}
+    <div class="comment">
+        <div class="meta">{{ post.author.get_full_name|default:post.author.username }} · {{ post.created_at|date:"d.m.Y H:i" }}</div>
+        <div>{{ post.body|linebreaksbr }}</div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if user.is_authenticated and not topic.is_closed or can_moderate %}
+<div class="card">
+    <h2>Ответить</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn">Отправить</button>
+    </form>
+</div>
+{% elif topic.is_closed %}
+<p class="muted">Тема закрыта для новых ответов.</p>
+{% else %}
+<p class="muted"><a href="{% url 'accounts:login' %}">Войдите</a>, чтобы ответить.</p>
+{% endif %}
+{% endblock %}

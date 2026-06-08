@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Отчёты{% endblock %}
+{% block content %}
+<h1>Аналитика заявок</h1>
+
+<div class="grid">
+    <div class="card stat"><div class="value">{{ total }}</div><div class="label">Всего заявок</div></div>
+    <div class="card stat"><div class="value">{{ open }}</div><div class="label">Открыто</div></div>
+    <div class="card stat"><div class="value">{{ resolved_count }}</div><div class="label">Решено</div></div>
+    <div class="card stat"><div class="value">{{ avg_resolution_hours|default:"—" }}</div><div class="label">Среднее время решения, ч</div></div>
+</div>
+
+<div class="card">
+    <h2>По статусам</h2>
+    <table>
+        <thead><tr><th>Статус</th><th>Количество</th></tr></thead>
+        <tbody>
+            {% for row in by_status %}
+            <tr><td>{{ row.label }}</td><td>{{ row.count }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2>По категориям</h2>
+    <table>
+        <thead><tr><th>Категория</th><th>Количество</th></tr></thead>
+        <tbody>
+            {% for row in by_category %}
+            <tr><td>{{ row.name|default:"Без категории" }}</td><td>{{ row.count }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

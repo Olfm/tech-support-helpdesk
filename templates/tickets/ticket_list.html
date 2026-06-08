@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Заявки{% endblock %}
+{% block content %}
+<h1>Заявки</h1>
+
+{% if is_operator %}
+<div class="card">
+    <form method="get" class="inline-form">
+        <label>Фильтр по статусу</label>
+        <select name="status" onchange="this.form.submit()">
+            <option value="">Все статусы</option>
+            {% for value, label in statuses %}
+                <option value="{{ value }}" {% if value == current_status %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+{% else %}
+<p><a class="btn" href="{% url 'tickets:ticket_create' %}">Подать заявку</a></p>
+{% endif %}
+
+<div class="card">
+    {% include "tickets/_ticket_table.html" with tickets=tickets %}
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Личный кабинет{% endblock %}
+{% block content %}
+<h1>Личный кабинет</h1>
+
+{% if is_operator %}
+    <div class="grid">
+        <div class="card stat"><div class="value">{{ total_open }}</div><div class="label">Открытых заявок</div></div>
+        <div class="card stat"><div class="value">{{ unassigned }}</div><div class="label">Не назначено</div></div>
+        <div class="card stat"><div class="value">{{ my_queue|length }}</div><div class="label">В моей работе</div></div>
+        <div class="card stat"><a class="btn" href="{% url 'tickets:reports' %}">Отчёты</a></div>
+    </div>
+
+    <div class="card">
+        <h2>Мои заявки в работе</h2>
+        {% include "tickets/_ticket_table.html" with tickets=my_queue %}
+    </div>
+
+    <div class="card">
+        <h2>Последние заявки</h2>
+        {% include "tickets/_ticket_table.html" with tickets=recent %}
+    </div>
+{% else %}
+    <div class="card">
+        <p>У вас {{ open_count }} активных заявок.</p>
+        <a class="btn" href="{% url 'tickets:ticket_create' %}">Подать новую заявку</a>
+    </div>
+    <div class="card">
+        <h2>Мои заявки</h2>
+        {% include "tickets/_ticket_table.html" with tickets=tickets %}
+    </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,21 @@
+{% if tickets %}
+<table>
+    <thead>
+        <tr><th>#</th><th>Тема</th><th>Категория</th><th>Статус</th><th>Исполнитель</th><th>Создана</th></tr>
+    </thead>
+    <tbody>
+        {% for t in tickets %}
+        <tr>
+            <td>{{ t.pk }}</td>
+            <td><a href="{{ t.get_absolute_url }}">{{ t.title }}</a></td>
+            <td>{{ t.category|default:"—" }}</td>
+            <td><span class="pill {{ t.status }}">{{ t.get_status_display }}</span></td>
+            <td>{% if t.assignee %}{{ t.assignee.get_full_name|default:t.assignee.username }}{% else %}—{% endif %}</td>
+            <td class="muted">{{ t.created_at|date:"d.m.Y H:i" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="muted">Заявок нет.</p>
+{% endif %}

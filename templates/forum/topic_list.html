@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Форум{% endblock %}
+{% block content %}
+<h1>Форум</h1>
+{% if user.is_authenticated %}
+<p><a class="btn" href="{% url 'forum:topic_create' %}">Создать тему</a></p>
+{% endif %}
+
+<div class="card">
+    <table>
+        <thead><tr><th>Тема</th><th>Автор</th><th>Ответов</th><th>Создана</th></tr></thead>
+        <tbody>
+            {% for topic in topics %}
+            <tr>
+                <td><a href="{{ topic.get_absolute_url }}">{{ topic.title }}</a>
+                    {% if topic.is_closed %}<span class="pill closed">закрыта</span>{% endif %}</td>
+                <td>{{ topic.author.get_full_name|default:topic.author.username }}</td>
+                <td>{{ topic.posts.count }}</td>
+                <td class="muted">{{ topic.created_at|date:"d.m.Y H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="muted">Тем пока нет.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

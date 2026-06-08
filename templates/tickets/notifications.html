@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Уведомления{% endblock %}
+{% block content %}
+<h1>Уведомления</h1>
+
+{% if items %}
+<form method="post" action="{% url 'tickets:notifications_read_all' %}">
+    {% csrf_token %}
+    <button type="submit" class="btn secondary">Отметить все прочитанными</button>
+</form>
+<div class="card">
+    <table>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>
+                    {% if item.ticket %}
+                        <a href="{% url 'tickets:notification_read' item.pk %}">{{ item.message }}</a>
+                    {% else %}
+                        {{ item.message }}
+                    {% endif %}
+                </td>
+                <td class="muted">{{ item.created_at|date:"d.m.Y H:i" }}</td>
+                <td>{% if not item.is_read %}<span class="pill new">новое</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="muted">Уведомлений нет.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Заявка #{{ ticket.pk }}{% endblock %}
+{% block content %}
+<h1>Заявка #{{ ticket.pk }}: {{ ticket.title }}</h1>
+
+<div class="card">
+    <p><span class="pill {{ ticket.status }}">{{ ticket.get_status_display }}</span>
+       <span class="muted">Приоритет: {{ ticket.get_priority_display }}</span></p>
+    <p><strong>Заявитель:</strong> {{ ticket.author.get_full_name|default:ticket.author.username }}</p>
+    <p><strong>Категория:</strong> {{ ticket.category|default:"не определена" }}</p>
+    <p><strong>Исполнитель:</strong> {% if ticket.assignee %}{{ ticket.assignee.get_full_name|default:ticket.assignee.username }}{% else %}не назначен{% endif %}</p>
+    <p><strong>Создана:</strong> {{ ticket.created_at|date:"d.m.Y H:i" }}
+       {% if ticket.resolved_at %} · <strong>Решена:</strong> {{ ticket.resolved_at|date:"d.m.Y H:i" }} ({{ ticket.resolution_hours }} ч){% endif %}</p>
+    <hr>
+    <p>{{ ticket.description|linebreaksbr }}</p>
+
+    {% if ticket.is_open %}
+    <form method="post" class="inline-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="resolve">
+        <button type="submit" class="btn secondary">Отметить решённой</button>
+    </form>
+    {% endif %}
+</div>
+
+{% if is_operator and manage_form %}
+<div class="card">
+    <h2>Управление (оператор)</h2>
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="manage">
+        {{ manage_form.as_p }}
+        <button type="submit" class="btn">Сохранить</button>
+    </form>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>Переписка</h2>
+    {% for comment in comments %}
+        <div class="comment">
+            <div class="meta">{{ comment.author.get_full_name|default:comment.author.username }} · {{ comment.created_at|date:"d.m.Y H:i" }}</div>
+            <div>{{ comment.body|linebreaksbr }}</div>
+        </div>
+    {% empty %}
+        <p class="muted">Сообщений пока нет.</p>
+    {% endfor %}
+
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="comment">
+        {{ comment_form.as_p }}
+        <button type="submit" class="btn">Отправить</button>
+    </form>
+</div>
+{% endblock %}
