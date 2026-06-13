@@ -39,11 +39,11 @@ DEMO_TICKETS = [
     ("Вопрос по расписанию", "Где посмотреть актуальное расписание сессии?"),
 ]
 
-# несколько операторов, чтобы заявки решал не один человек
+# несколько операторов, чтобы заявки решал не один человек (только имена)
 OPERATORS = [
-    ("operator", "Олег", "Поддержкин"),
-    ("operator_anna", "Анна", "Сетевая"),
-    ("operator_dmitry", "Дмитрий", "Серверов"),
+    ("operator", "Олег"),
+    ("operator_anna", "Анна"),
+    ("operator_dmitry", "Дмитрий"),
 ]
 
 # к кому в демо прикреплены заявки (показывает, что решают разные операторы)
@@ -106,20 +106,21 @@ class Command(BaseCommand):
         # операторы поддержки (несколько человек)
         op_pw, gen = self.password_for("SEED_OPERATOR_PASSWORD")
         operators = {}
-        for username, first, last in OPERATORS:
+        for username, first in OPERATORS:
             op, created = User.objects.get_or_create(
                 username=username,
-                defaults={
-                    "first_name": first,
-                    "last_name": last,
-                    "email": f"{username}@univer-vitte.ru",
-                },
+                defaults={"first_name": first, "email": f"{username}@univer-vitte.ru"},
             )
             if created:
                 op.set_password(op_pw)
                 op.save()
                 if gen:
                     generated.append((username, op_pw))
+            # имя без фамилии (поправит и уже созданных операторов при повторном запуске)
+            if op.first_name != first or op.last_name:
+                op.first_name = first
+                op.last_name = ""
+                op.save(update_fields=["first_name", "last_name"])
             op.groups.add(group)
             operators[username] = op
 
