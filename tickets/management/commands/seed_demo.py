@@ -39,6 +39,22 @@ DEMO_TICKETS = [
     ("Вопрос по расписанию", "Где посмотреть актуальное расписание сессии?"),
 ]
 
+# несколько операторов, чтобы заявки решал не один человек
+OPERATORS = [
+    ("operator", "Олег", "Поддержкин"),
+    ("operator_anna", "Анна", "Сетевая"),
+    ("operator_dmitry", "Дмитрий", "Серверов"),
+]
+
+# к кому в демо прикреплены заявки (показывает, что решают разные операторы)
+ASSIGNMENTS = {
+    "Не открывается личный кабинет": "operator",
+    "Вопрос по расписанию": "operator",
+    "Пропал интернет в аудитории": "operator_anna",
+    "Не приходят письма": "operator_anna",
+    "Не печатает принтер": "operator_dmitry",
+}
+
 # переписка для части заявок: ("автор", "текст"), автор - operator или student
 DEMO_COMMENTS = [
     ("Не открывается личный кабинет", [
@@ -87,18 +103,25 @@ class Command(BaseCommand):
             if gen:
                 generated.append(("admin (суперпользователь)", admin_pw))
 
-        # оператор поддержки
+        # операторы поддержки (несколько человек)
         op_pw, gen = self.password_for("SEED_OPERATOR_PASSWORD")
-        operator, created = User.objects.get_or_create(
-            username="operator",
-            defaults={"first_name": "Олег", "last_name": "Поддержкин", "email": "operator@univer-vitte.ru"},
-        )
-        if created:
-            operator.set_password(op_pw)
-            operator.save()
-            if gen:
-                generated.append(("operator", op_pw))
-        operator.groups.add(group)
+        operators = {}
+        for username, first, last in OPERATORS:
+            op, created = User.objects.get_or_create(
+                username=username,
+                defaults={
+                    "first_name": first,
+                    "last_name": last,
+                    "email": f"{username}@univer-vitte.ru",
+                },
+            )
+            if created:
+                op.set_password(op_pw)
+                op.save()
+                if gen:
+                    generated.append((username, op_pw))
+            op.groups.add(group)
+            operators[username] = op
 
         # обычный пользователь (студент)
         user_pw, gen = self.password_for("SEED_USER_PASSWORD")
@@ -120,13 +143,24 @@ class Command(BaseCommand):
                 )
                 process_new_ticket(ticket)
 
-        # добавляю переписку с ответами оператора (только если её ещё нет)
+        # закрепляю демо-заявки за разными операторами (видно, что решает не один)
+        for title, username in ASSIGNMENTS.items():
+            ticket = Ticket.objects.filter(title=title).first()
+            op = operators.get(username)
+            if ticket and op:
+                ticket.assignee = op
+                if ticket.status == Ticket.Status.NEW:
+                    ticket.status = Ticket.Status.ASSIGNED
+                ticket.save(update_fields=["assignee", "status", "updated_at"])
+
+        # добавляю переписку: отвечает оператор, назначенный на заявку
         for title, msgs in DEMO_COMMENTS:
             ticket = Ticket.objects.filter(title=title).first()
             if ticket and not ticket.comments.exists():
                 for role, text in msgs:
-                    author = operator if role == "operator" else student
-                    TicketComment.objects.create(ticket=ticket, author=author, body=text)
+                    author = ticket.assignee if role == "operator" else student
+                    if author:
+                        TicketComment.objects.create(ticket=ticket, author=author, body=text)
 
         self.stdout.write(self.style.SUCCESS("Демоданные загружены."))
         if generated:
