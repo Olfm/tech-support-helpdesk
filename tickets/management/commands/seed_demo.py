@@ -18,7 +18,7 @@ from django.contrib.auth.models import Group, User
 from django.core.management.base import BaseCommand
 
 from accounts.roles import OPERATOR_GROUP
-from tickets.models import Category, Ticket
+from tickets.models import Category, Ticket, TicketComment
 from tickets.services import process_new_ticket
 
 # ключевые слова даю основами (без окончаний), чтобы ловить разные формы:
@@ -37,6 +37,20 @@ DEMO_TICKETS = [
     ("Не приходят письма", "На почту не приходят уведомления о расписании."),
     ("Не печатает принтер", "Принтер на кафедре не реагирует на отправку документа."),
     ("Вопрос по расписанию", "Где посмотреть актуальное расписание сессии?"),
+]
+
+# переписка для части заявок: ("автор", "текст"), автор - operator или student
+DEMO_COMMENTS = [
+    ("Не открывается личный кабинет", [
+        ("operator", "Здравствуйте! Сбросил вам пароль, на почту придёт ссылка для входа. Попробуйте и напишите, если не получится."),
+        ("student", "Спасибо, всё заработало!"),
+    ]),
+    ("Пропал интернет в аудитории", [
+        ("operator", "Здравствуйте! Передал заявку сетевому администратору, проверим точку доступа в 312. Отпишусь, как починим."),
+    ]),
+    ("Вопрос по расписанию", [
+        ("operator", "Здравствуйте! Расписание сессии есть в личном кабинете в разделе «Электронный университет», вкладка «Расписание». Оно же дублируется на сайте в разделе «Студенту»."),
+    ]),
 ]
 
 
@@ -105,6 +119,14 @@ class Command(BaseCommand):
                     author=student, title=title, description=description
                 )
                 process_new_ticket(ticket)
+
+        # добавляю переписку с ответами оператора (только если её ещё нет)
+        for title, msgs in DEMO_COMMENTS:
+            ticket = Ticket.objects.filter(title=title).first()
+            if ticket and not ticket.comments.exists():
+                for role, text in msgs:
+                    author = operator if role == "operator" else student
+                    TicketComment.objects.create(ticket=ticket, author=author, body=text)
 
         self.stdout.write(self.style.SUCCESS("Демоданные загружены."))
         if generated:
