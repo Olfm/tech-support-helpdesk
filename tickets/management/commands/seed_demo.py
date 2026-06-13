@@ -16,6 +16,7 @@ import secrets
 
 from django.contrib.auth.models import Group, User
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 
 from accounts.roles import OPERATOR_GROUP
 from tickets.models import Category, Ticket, TicketComment
@@ -46,27 +47,53 @@ OPERATORS = [
     ("operator_dmitry", "Дмитрий"),
 ]
 
-# к кому в демо прикреплены заявки (показывает, что решают разные операторы)
-ASSIGNMENTS = {
-    "Не открывается личный кабинет": "operator",
-    "Вопрос по расписанию": "operator",
-    "Пропал интернет в аудитории": "operator_anna",
-    "Не приходят письма": "operator_anna",
-    "Не печатает принтер": "operator_dmitry",
-}
-
-# переписка для части заявок: ("автор", "текст"), автор - operator или student
-DEMO_COMMENTS = [
-    ("Не открывается личный кабинет", [
-        ("operator", "Здравствуйте! Сбросил вам пароль, на почту придёт ссылка для входа. Попробуйте и напишите, если не получится."),
-        ("student", "Спасибо, всё заработало!"),
-    ]),
-    ("Пропал интернет в аудитории", [
-        ("operator", "Здравствуйте! Передал заявку сетевому администратору, проверим точку доступа в 312. Отпишусь, как починим."),
-    ]),
-    ("Вопрос по расписанию", [
-        ("operator", "Здравствуйте! Расписание сессии есть в личном кабинете в разделе «Электронный университет», вкладка «Расписание». Оно же дублируется на сайте в разделе «Студенту»."),
-    ]),
+# сценарий по каждой заявке: кто решает, статус и переписка.
+# у решённых заявок диалог заканчивается ответом с итогом.
+# роль в переписке: operator (отвечает назначенный оператор) или student.
+DEMO_FLOW = [
+    {
+        "title": "Не открывается личный кабинет",
+        "operator": "operator",
+        "status": "resolved",
+        "messages": [
+            ("operator", "Здравствуйте! Сбросил вам пароль, на почту придёт ссылка для входа. Попробуйте войти и напишите, если не получится."),
+            ("student", "Спасибо, всё заработало!"),
+            ("operator", "Рад помочь! Тогда закрываю заявку. Если снова будут проблемы со входом, пишите."),
+        ],
+    },
+    {
+        "title": "Пропал интернет в аудитории",
+        "operator": "operator_anna",
+        "status": "resolved",
+        "messages": [
+            ("operator", "Здравствуйте! Передала заявку сетевому администратору, проверим точку доступа в 312."),
+            ("operator", "Точку доступа в 312 перезагрузили, Wi-Fi снова работает. Заявку закрываю."),
+        ],
+    },
+    {
+        "title": "Не приходят письма",
+        "operator": "operator_anna",
+        "status": "in_progress",
+        "messages": [
+            ("operator", "Здравствуйте! Разбираюсь с рассылкой уведомлений. Подскажите, пожалуйста, проверяли ли вы папку «Спам»?"),
+        ],
+    },
+    {
+        "title": "Не печатает принтер",
+        "operator": "operator_dmitry",
+        "status": "in_progress",
+        "messages": [
+            ("operator", "Здравствуйте! Принял заявку в работу, подойду к принтеру на кафедре и проверю подключение."),
+        ],
+    },
+    {
+        "title": "Вопрос по расписанию",
+        "operator": "operator",
+        "status": "resolved",
+        "messages": [
+            ("operator", "Здравствуйте! Расписание сессии есть в личном кабинете в разделе «Электронный университет», вкладка «Расписание». Оно же дублируется на сайте в разделе «Студенту»."),
+        ],
+    },
 ]
 
 
@@ -144,24 +171,26 @@ class Command(BaseCommand):
                 )
                 process_new_ticket(ticket)
 
-        # закрепляю демо-заявки за разными операторами (видно, что решает не один)
-        for title, username in ASSIGNMENTS.items():
-            ticket = Ticket.objects.filter(title=title).first()
-            op = operators.get(username)
-            if ticket and op:
-                ticket.assignee = op
-                if ticket.status == Ticket.Status.NEW:
-                    ticket.status = Ticket.Status.ASSIGNED
-                ticket.save(update_fields=["assignee", "status", "updated_at"])
-
-        # добавляю переписку: отвечает оператор, назначенный на заявку
-        for title, msgs in DEMO_COMMENTS:
-            ticket = Ticket.objects.filter(title=title).first()
-            if ticket and not ticket.comments.exists():
-                for role, text in msgs:
-                    author = ticket.assignee if role == "operator" else student
-                    if author:
-                        TicketComment.objects.create(ticket=ticket, author=author, body=text)
+        # разыгрываю сценарий по каждой заявке: исполнитель, переписка и статус.
+        # переписку пересобираю заново, чтобы при повторном запуске всё было согласовано.
+        status_map = {
+            "assigned": Ticket.Status.ASSIGNED,
+            "in_progress": Ticket.Status.IN_PROGRESS,
+            "resolved": Ticket.Status.RESOLVED,
+        }
+        for flow in DEMO_FLOW:
+            ticket = Ticket.objects.filter(title=flow["title"]).first()
+            op = operators.get(flow["operator"])
+            if not ticket or not op:
+                continue
+            ticket.assignee = op
+            ticket.comments.all().delete()
+            for role, text in flow["messages"]:
+                author = op if role == "operator" else student
+                TicketComment.objects.create(ticket=ticket, author=author, body=text)
+            ticket.status = status_map[flow["status"]]
+            ticket.resolved_at = timezone.now() if flow["status"] == "resolved" else None
+            ticket.save(update_fields=["assignee", "status", "resolved_at", "updated_at"])
 
         self.stdout.write(self.style.SUCCESS("Демоданные загружены."))
         if generated:
