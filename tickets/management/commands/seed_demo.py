@@ -20,24 +20,23 @@ from django.utils import timezone
 
 from accounts.roles import OPERATOR_GROUP
 from tickets.models import Category, Ticket, TicketComment
-from tickets.services import process_new_ticket
 
-# ключевые слова даю основами (без окончаний), чтобы ловить разные формы:
-# "почт" подойдёт и к "почта", и к "почту", и к "почтой"
+# категории, которые пользователь выбирает при подаче заявки
 CATEGORIES = [
-    ("Проблемы с интернетом", "интернет, сеть, vpn, wi-fi, подключ", False),
-    ("Проблемы с почтой", "почт, email, письм, рассылк, ящик", False),
-    ("Доступ к платформам", "lms, moodle, кабинет, пароль, вход, доступ", False),
-    ("Оборудование", "принтер, монитор, клавиатур, мыш, периферия, печат", False),
-    ("Другое", "", True),
+    ("Проблемы с интернетом", "Доступ к сети, Wi-Fi, VPN"),
+    ("Проблемы с почтой", "Электронная почта, рассылки"),
+    ("Доступ к платформам", "Личный кабинет, СДО, пароли"),
+    ("Оборудование", "Принтеры, мониторы, периферия"),
+    ("Другое", "Прочие обращения"),
 ]
 
+# демо-заявки: тема, описание, категория
 DEMO_TICKETS = [
-    ("Не открывается личный кабинет", "Не могу войти в LMS, не принимает пароль."),
-    ("Пропал интернет в аудитории", "В 312 аудитории не работает wi-fi."),
-    ("Не приходят письма", "На почту не приходят уведомления о расписании."),
-    ("Не печатает принтер", "Принтер на кафедре не реагирует на отправку документа."),
-    ("Вопрос по расписанию", "Где посмотреть актуальное расписание сессии?"),
+    ("Не открывается личный кабинет", "Не могу войти в LMS, не принимает пароль.", "Доступ к платформам"),
+    ("Пропал интернет в аудитории", "В 312 аудитории не работает wi-fi.", "Проблемы с интернетом"),
+    ("Не приходят письма", "На почту не приходят уведомления о расписании.", "Проблемы с почтой"),
+    ("Не печатает принтер", "Принтер на кафедре не реагирует на отправку документа.", "Оборудование"),
+    ("Вопрос по расписанию", "Где посмотреть актуальное расписание сессии?", "Другое"),
 ]
 
 # несколько операторов, чтобы заявки решал не один человек (только имена)
@@ -111,10 +110,8 @@ class Command(BaseCommand):
         group, _ = Group.objects.get_or_create(name=OPERATOR_GROUP)
 
         # категории
-        for name, keywords, is_default in CATEGORIES:
-            Category.objects.get_or_create(
-                name=name, defaults={"keywords": keywords, "is_default": is_default}
-            )
+        for name, description in CATEGORIES:
+            Category.objects.get_or_create(name=name, defaults={"description": description})
 
         generated = []
 
@@ -163,13 +160,13 @@ class Command(BaseCommand):
             if gen:
                 generated.append(("student", user_pw))
 
-        # демо-заявки создаю только если их ещё нет
+        # демо-заявки создаю только если их ещё нет (категорию задаю явно)
         if not Ticket.objects.exists():
-            for title, description in DEMO_TICKETS:
-                ticket = Ticket.objects.create(
-                    author=student, title=title, description=description
+            for title, description, cat_name in DEMO_TICKETS:
+                category = Category.objects.filter(name=cat_name).first()
+                Ticket.objects.create(
+                    author=student, title=title, description=description, category=category
                 )
-                process_new_ticket(ticket)
 
         # разыгрываю сценарий по каждой заявке: исполнитель, переписка и статус.
         # переписку пересобираю заново, чтобы при повторном запуске всё было согласовано.

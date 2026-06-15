@@ -7,7 +7,7 @@ from django.utils import timezone
 from accounts.roles import is_operator
 from .forms import TicketCommentForm, TicketForm, TicketManageForm
 from .models import Category, Notification, Ticket
-from .services import process_new_ticket
+from .services import auto_assign_ticket
 
 
 def home(request):
@@ -48,12 +48,8 @@ def ticket_create(request):
             if not ticket.contact_email:
                 ticket.contact_email = request.user.email
             ticket.save()
-            process_new_ticket(ticket)
-            messages.success(
-                request,
-                f"Заявка #{ticket.pk} создана. Категория: "
-                f"{ticket.category or 'не определена'}.",
-            )
+            auto_assign_ticket(ticket)
+            messages.success(request, f"Заявка #{ticket.pk} создана.")
             return redirect(ticket.get_absolute_url())
     else:
         form = TicketForm()

@@ -11,9 +11,8 @@ class TicketCommentInline(admin.TabularInline):
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ["name", "is_default", "keywords"]
-    list_editable = ["is_default"]
-    search_fields = ["name", "keywords"]
+    list_display = ["name", "description"]
+    search_fields = ["name"]
 
 
 @admin.register(Ticket)

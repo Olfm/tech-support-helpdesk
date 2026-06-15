@@ -1,9 +1,9 @@
 """
-Тут вся логика обработки заявок: сама определяю категорию по ключевым словам
-и отдаю заявку самому свободному оператору.
+Логика распределения заявок: новую заявку система сама отдаёт оператору, у
+которого сейчас меньше всего открытых заявок.
 
 Вынесла это из views в отдельный файл, чтобы можно было вызывать и из формы, и из
-сигналов, и из команды seed, а ещё чтобы удобнее было писать тесты.
+команды seed, а ещё чтобы удобнее было писать тесты.
 """
 
 from __future__ import annotations
@@ -12,25 +12,7 @@ from django.contrib.auth.models import User
 from django.db.models import Count, Q
 
 from accounts.roles import OPERATOR_GROUP
-from .models import Category, Notification, Ticket
-
-
-def classify_ticket(ticket: Ticket) -> Category | None:
-    # ищу категорию по совпадению ключевых слов в теме и описании.
-    # если ничего не нашлось, беру категорию по умолчанию
-    text = f"{ticket.title} {ticket.description}".lower()
-
-    best_category = None
-    best_score = 0
-    for category in Category.objects.all():
-        score = sum(1 for kw in category.keyword_list() if kw and kw in text)
-        if score > best_score:
-            best_score = score
-            best_category = category
-
-    if best_category is not None:
-        return best_category
-    return Category.objects.filter(is_default=True).first()
+from .models import Notification, Ticket
 
 
 def operators_queryset():
@@ -71,14 +53,3 @@ def auto_assign_ticket(ticket: Ticket) -> User | None:
     if operator is not None:
         assign_ticket(ticket, operator)
     return operator
-
-
-def process_new_ticket(ticket: Ticket) -> Ticket:
-    # полная обработка новой заявки: определить категорию и назначить оператора
-    if ticket.category is None:
-        ticket.category = classify_ticket(ticket)
-        if ticket.category is not None:
-            ticket.save(update_fields=["category", "updated_at"])
-
-    auto_assign_ticket(ticket)
-    return ticket

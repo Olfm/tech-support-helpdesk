@@ -12,14 +12,12 @@ class TicketForm(forms.ModelForm):
         widgets = {
             "description": forms.Textarea(attrs={"rows": 5}),
         }
-        help_texts = {
-            "category": "Можно не выбирать, система определит категорию сама.",
-        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # категорию и контакты делаю необязательными
-        self.fields["category"].required = False
+        # категорию выбирает пользователь (обязательно), контакты - по желанию
+        self.fields["category"].required = True
+        self.fields["category"].empty_label = "Выберите категорию"
         self.fields["contact_email"].required = False
         self.fields["contact_phone"].required = False
 

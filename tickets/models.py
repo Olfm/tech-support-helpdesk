@@ -7,19 +7,9 @@ from django.utils import timezone
 
 
 class Category(models.Model):
-    # категория заявки. По словам из keywords определяю её автоматически
+    # категория заявки, которую выбирает пользователь при подаче
     name = models.CharField("Название", max_length=100, unique=True)
-    keywords = models.TextField(
-        "Ключевые слова",
-        blank=True,
-        help_text="Слова через запятую для автоматического определения категории.",
-    )
     description = models.CharField("Описание", max_length=255, blank=True)
-    is_default = models.BooleanField(
-        "Категория по умолчанию",
-        default=False,
-        help_text="Назначается, если ни одна категория не подошла по ключевым словам.",
-    )
 
     class Meta:
         verbose_name = "Категория"
@@ -28,10 +18,6 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
-
-    def keyword_list(self) -> list[str]:
-        # разбиваю строку с ключевыми словами в список
-        return [w.strip().lower() for w in self.keywords.split(",") if w.strip()]
 
 
 class Ticket(models.Model):
